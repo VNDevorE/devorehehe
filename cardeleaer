@@ -1,0 +1,192 @@
+warn("Anti AFK đang chạy...")
+game:GetService("Players").LocalPlayer.Idled:Connect(function()
+    warn("Anti AFK kích hoạt - Đang giả lập chuột phải")
+    local VirtualUser = game:GetService("VirtualUser")
+    VirtualUser:CaptureController()
+    VirtualUser:ClickButton2(Vector2.new())
+end)
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Gravity = workspace.Gravity -- 196.2
+local MAX_SPEED = 510 
+local MAX_FORCE_VECTOR = Vector3.new(math.huge, math.huge, math.huge)
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Tạo GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FlyCarGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 250, 0, 80)
+mainFrame.Position = UDim2.new(0, 10, 0, 10)
+mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.Parent = screenGui
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = mainFrame
+
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "Title"
+titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Position = UDim2.new(0, 0, 0, 0)
+titleLabel.Text = "🚗 Hennessey3 Fly"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextScaled = true
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.Parent = mainFrame
+
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0.9, 0, 0, 35)
+toggleButton.Position = UDim2.new(0.05, 0, 0, 35)
+toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+toggleButton.Text = "BẬT FLY"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextScaled = true
+toggleButton.Font = Enum.Font.Gotham
+toggleButton.Parent = mainFrame
+
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 8)
+buttonCorner.Parent = toggleButton
+
+-- Biến trạng thái
+local flyEnabled = false
+local carModel = nil
+local primaryPart = nil
+local heartbeatConnection = nil
+local antiGravForce = nil
+local angularVel = nil
+local bodyVelocity = nil
+
+-- TIMER AUTO RETURN
+local startTime = os.clock()
+local RETURN_TIME = 60 * 30 --giay
+local RETURN_CFRAME = CFrame.new(
+    -0.00124485791, 20013.5488, -13.8987846,
+    0.999999821, -0.000596006052, -3.58467355e-06,
+    0.000596015481, 0.999992192, 0.00390104786,
+    1.25959752e-06, -0.00390104926, 0.999992371
+)
+
+-- Hàm setup xe
+local function setupCar()
+    for i, v in pairs(workspace.Cars:GetDescendants()) do
+        if v.Name == "Hennessey6" and v:IsA("Model") and v.PrimaryPart then
+            carModel = v
+            primaryPart = carModel.PrimaryPart
+
+            v:SetPrimaryPartCFrame(RETURN_CFRAME)
+
+            local att = primaryPart:FindFirstChild("PhysicsAttachment") or Instance.new("Attachment", primaryPart)
+            att.Name = "PhysicsAttachment"
+
+            antiGravForce = primaryPart:FindFirstChild("AntiGravityForce")
+            if not antiGravForce then
+                antiGravForce = Instance.new("VectorForce")
+                antiGravForce.Name = "AntiGravityForce"
+                antiGravForce.Attachment0 = att
+                antiGravForce.Parent = primaryPart
+            end
+            local totalMass = primaryPart:GetMass()
+            antiGravForce.Force = Vector3.new(0, totalMass * Gravity, 0)
+
+            angularVel = primaryPart:FindFirstChild("ZeroAngularVelocity")
+            if not angularVel then
+                angularVel = Instance.new("BodyAngularVelocity")
+                angularVel.Name = "ZeroAngularVelocity"
+                angularVel.maxTorque = MAX_FORCE_VECTOR
+                angularVel.P = 20000
+                angularVel.Parent = primaryPart
+            end
+            angularVel.AngularVelocity = Vector3.new(0, 0, 0)
+
+            bodyVelocity = primaryPart:FindFirstChild("ConstantBodyVelocity")
+            if not bodyVelocity then
+                bodyVelocity = Instance.new("BodyVelocity")
+                bodyVelocity.Name = "ConstantBodyVelocity"
+                bodyVelocity.maxForce = MAX_FORCE_VECTOR
+                bodyVelocity.Parent = primaryPart
+            end
+
+            primaryPart:SetNetworkOwner(player)
+            return true
+        end
+    end
+    return false
+end
+
+-- Hàm bật fly
+local function enableFly()
+    if not carModel then
+        if not setupCar() then
+            warn("Không tìm thấy xe Hennessey3!")
+            return
+        end
+    end
+
+    flyEnabled = true
+    toggleButton.Text = "TẮT FLY"
+    toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+
+    heartbeatConnection = RunService.Heartbeat:Connect(function()
+    	if primaryPart and flyEnabled then
+        	local forwardVector = primaryPart.CFrame.LookVector
+        	bodyVelocity.Velocity = forwardVector * MAX_SPEED
+
+        	if os.clock() - startTime >= RETURN_TIME then
+            
+           	 -- RECHECK SAFETY
+            	if carModel and carModel.PrimaryPart then
+                	carModel:SetPrimaryPartCFrame(RETURN_CFRAME)
+               		warn("⭐ Đã auto quay về vị trí bắt đầu!")
+           	 	else
+                	warn("❌ Không thể teleport vì PrimaryPart NULL — đợi 1 nhịp rồi thử lại…")
+            	end
+
+            	startTime = os.clock()
+        	end
+    	end
+	end)
+
+
+    warn("Fly car đã BẬT!")
+end
+
+-- Hàm tắt fly
+local function disableFly()
+    flyEnabled = false
+    if heartbeatConnection then
+        heartbeatConnection:Disconnect()
+        heartbeatConnection = nil
+    end
+    if bodyVelocity then
+        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    end
+    toggleButton.Text = "BẬT FLY"
+    toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+
+    warn("Fly car đã TẮT!")
+end
+
+-- Sự kiện toggle
+toggleButton.MouseButton1Click:Connect(function()
+    if flyEnabled then
+        disableFly()
+    else
+        enableFly()
+    end
+end)
+
+warn("GUI Fly Car đã load! Click nút để bật/tắt.")
