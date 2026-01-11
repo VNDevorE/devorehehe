@@ -15,51 +15,297 @@ local MAX_FORCE_VECTOR = Vector3.new(math.huge, math.huge, math.huge)
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- ═══════════════════════════════════════════════════════════
+-- 🎨 MODERN UI DESIGN WITH ANIMATIONS
+-- ═══════════════════════════════════════════════════════════
+
+local scriptStartTime = os.clock()
+
 -- Tạo GUI
 local screenGui = Instance.new("ScreenGui")
 screenGui.Name = "FlyCarGUI"
 screenGui.ResetOnSpawn = false
 screenGui.Parent = playerGui
 
+-- Main Container với Gradient Background
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 250, 0, 80)
-mainFrame.Position = UDim2.new(0, 10, 0, 10)
-mainFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+mainFrame.Size = UDim2.new(0, 0, 0, 0) -- Start từ 0 để animate
+mainFrame.Position = UDim2.new(0, 20, 0, 20)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
 mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
 mainFrame.Draggable = true
+mainFrame.ClipsDescendants = true
 mainFrame.Parent = screenGui
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 10)
-corner.Parent = mainFrame
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 16)
+mainCorner.Parent = mainFrame
 
+-- Gradient Overlay
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 25))
+}
+gradient.Rotation = 45
+gradient.Parent = mainFrame
+
+-- Glow Effect (Shadow)
+local shadow = Instance.new("ImageLabel")
+shadow.Name = "Shadow"
+shadow.BackgroundTransparency = 1
+shadow.Position = UDim2.new(0, -15, 0, -15)
+shadow.Size = UDim2.new(1, 30, 1, 30)
+shadow.ZIndex = 0
+shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ImageTransparency = 0.7
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+shadow.Parent = mainFrame
+
+-- Header Bar với Accent Color
+local headerBar = Instance.new("Frame")
+headerBar.Name = "HeaderBar"
+headerBar.Size = UDim2.new(1, 0, 0, 50)
+headerBar.BackgroundColor3 = Color3.fromRGB(138, 43, 226) -- Purple accent
+headerBar.BorderSizePixel = 0
+headerBar.Parent = mainFrame
+
+local headerCorner = Instance.new("UICorner")
+headerCorner.CornerRadius = UDim.new(0, 16)
+headerCorner.Parent = headerBar
+
+-- Header Bottom Mask (để chỉ bo góc trên)
+local headerMask = Instance.new("Frame")
+headerMask.Size = UDim2.new(1, 0, 0, 20)
+headerMask.Position = UDim2.new(0, 0, 1, -20)
+headerMask.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+headerMask.BorderSizePixel = 0
+headerMask.Parent = headerBar
+
+-- Animated Gradient cho Header
+local headerGradient = Instance.new("UIGradient")
+headerGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(102, 51, 238)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(138, 43, 226))
+}
+headerGradient.Parent = headerBar
+
+-- Title Icon
+local titleIcon = Instance.new("TextLabel")
+titleIcon.Name = "TitleIcon"
+titleIcon.Size = UDim2.new(0, 40, 0, 40)
+titleIcon.Position = UDim2.new(0, 10, 0, 5)
+titleIcon.BackgroundTransparency = 1
+titleIcon.Text = "🚗"
+titleIcon.TextSize = 28
+titleIcon.Font = Enum.Font.GothamBold
+titleIcon.Parent = headerBar
+
+-- Title Label
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Name = "Title"
-titleLabel.Size = UDim2.new(1, 0, 0, 30)
+titleLabel.Size = UDim2.new(1, -120, 0, 25)
+titleLabel.Position = UDim2.new(0, 55, 0, 5)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Position = UDim2.new(0, 0, 0, 0)
-titleLabel.Text = "🚗 Hennessey3 Fly"
+titleLabel.Text = "VEHICLE FLY"
 titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
-titleLabel.TextScaled = true
+titleLabel.TextSize = 18
 titleLabel.Font = Enum.Font.GothamBold
-titleLabel.Parent = mainFrame
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = headerBar
 
+-- Subtitle
+local subtitle = Instance.new("TextLabel")
+subtitle.Name = "Subtitle"
+subtitle.Size = UDim2.new(1, -120, 0, 15)
+subtitle.Position = UDim2.new(0, 55, 0, 28)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "Advanced Flight System"
+subtitle.TextColor3 = Color3.fromRGB(200, 200, 220)
+subtitle.TextSize = 10
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.TextTransparency = 0.3
+subtitle.Parent = headerBar
+
+-- Status Indicator (Animated Dot)
+local statusDot = Instance.new("Frame")
+statusDot.Name = "StatusDot"
+statusDot.Size = UDim2.new(0, 8, 0, 8)
+statusDot.Position = UDim2.new(1, -18, 0, 21)
+statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 127)
+statusDot.BorderSizePixel = 0
+statusDot.Parent = headerBar
+
+local dotCorner = Instance.new("UICorner")
+dotCorner.CornerRadius = UDim.new(1, 0)
+dotCorner.Parent = statusDot
+
+-- Content Container
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "ContentFrame"
+contentFrame.Size = UDim2.new(1, -30, 1, -70)
+contentFrame.Position = UDim2.new(0, 15, 0, 60)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = mainFrame
+
+-- Info Panel
+local infoPanel = Instance.new("Frame")
+infoPanel.Name = "InfoPanel"
+infoPanel.Size = UDim2.new(1, 0, 0, 60)
+infoPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+infoPanel.BorderSizePixel = 0
+infoPanel.Parent = contentFrame
+
+local infoPanelCorner = Instance.new("UICorner")
+infoPanelCorner.CornerRadius = UDim.new(0, 10)
+infoPanelCorner.Parent = infoPanel
+
+-- Speed Label
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Name = "SpeedLabel"
+speedLabel.Size = UDim2.new(0.5, -5, 0, 25)
+speedLabel.Position = UDim2.new(0, 10, 0, 5)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "⚡ Speed"
+speedLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
+speedLabel.TextSize = 11
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = infoPanel
+
+local speedValue = Instance.new("TextLabel")
+speedValue.Name = "SpeedValue"
+speedValue.Size = UDim2.new(0.5, -10, 0, 25)
+speedValue.Position = UDim2.new(0, 10, 0, 25)
+speedValue.BackgroundTransparency = 1
+speedValue.Text = "0"
+speedValue.TextColor3 = Color3.fromRGB(138, 43, 226)
+speedValue.TextSize = 16
+speedValue.Font = Enum.Font.GothamBold
+speedValue.TextXAlignment = Enum.TextXAlignment.Left
+speedValue.Parent = infoPanel
+
+-- Runtime Label
+local runtimeLabel = Instance.new("TextLabel")
+runtimeLabel.Name = "RuntimeLabel"
+runtimeLabel.Size = UDim2.new(0.5, -5, 0, 25)
+runtimeLabel.Position = UDim2.new(0.5, 0, 0, 5)
+runtimeLabel.BackgroundTransparency = 1
+runtimeLabel.Text = "⏱️ Runtime"
+runtimeLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
+runtimeLabel.TextSize = 11
+runtimeLabel.Font = Enum.Font.Gotham
+runtimeLabel.TextXAlignment = Enum.TextXAlignment.Left
+runtimeLabel.Parent = infoPanel
+
+local runtimeValue = Instance.new("TextLabel")
+runtimeValue.Name = "RuntimeValue"
+runtimeValue.Size = UDim2.new(0.5, -10, 0, 25)
+runtimeValue.Position = UDim2.new(0.5, 0, 0, 25)
+runtimeValue.BackgroundTransparency = 1
+runtimeValue.Text = "00:00:00"
+runtimeValue.TextColor3 = Color3.fromRGB(0, 255, 127)
+runtimeValue.TextSize = 16
+runtimeValue.Font = Enum.Font.GothamBold
+runtimeValue.TextXAlignment = Enum.TextXAlignment.Left
+runtimeValue.Parent = infoPanel
+
+-- Toggle Button với Gradient
 local toggleButton = Instance.new("TextButton")
 toggleButton.Name = "ToggleButton"
-toggleButton.Size = UDim2.new(0.9, 0, 0, 35)
-toggleButton.Position = UDim2.new(0.05, 0, 0, 35)
-toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-toggleButton.Text = "BẬT FLY"
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.TextScaled = true
-toggleButton.Font = Enum.Font.Gotham
-toggleButton.Parent = mainFrame
+toggleButton.Size = UDim2.new(1, 0, 0, 50)
+toggleButton.Position = UDim2.new(0, 0, 0, 70)
+toggleButton.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
+toggleButton.BorderSizePixel = 0
+toggleButton.AutoButtonColor = false
+toggleButton.Text = ""
+toggleButton.Parent = contentFrame
 
-local buttonCorner = Instance.new("UICorner")
-buttonCorner.CornerRadius = UDim.new(0, 8)
-buttonCorner.Parent = toggleButton
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 12)
+toggleCorner.Parent = toggleButton
+
+local toggleGradient = Instance.new("UIGradient")
+toggleGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 53, 69)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(185, 28, 28))
+}
+toggleGradient.Rotation = 90
+toggleGradient.Parent = toggleButton
+
+-- Button Icon
+local buttonIcon = Instance.new("TextLabel")
+buttonIcon.Name = "ButtonIcon"
+buttonIcon.Size = UDim2.new(0, 30, 1, 0)
+buttonIcon.Position = UDim2.new(0, 10, 0, 0)
+buttonIcon.BackgroundTransparency = 1
+buttonIcon.Text = "▶"
+buttonIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+buttonIcon.TextSize = 20
+buttonIcon.Font = Enum.Font.GothamBold
+buttonIcon.Parent = toggleButton
+
+-- Button Text
+local buttonText = Instance.new("TextLabel")
+buttonText.Name = "ButtonText"
+buttonText.Size = UDim2.new(1, -50, 1, 0)
+buttonText.Position = UDim2.new(0, 45, 0, 0)
+buttonText.BackgroundTransparency = 1
+buttonText.Text = "ACTIVATE FLY"
+buttonText.TextColor3 = Color3.fromRGB(255, 255, 255)
+buttonText.TextSize = 16
+buttonText.Font = Enum.Font.GothamBold
+buttonText.TextXAlignment = Enum.TextXAlignment.Left
+buttonText.Parent = toggleButton
+
+-- ═══════════════════════════════════════════════════════════
+-- 🎬 ANIMATIONS
+-- ═══════════════════════════════════════════════════════════
+
+-- Entrance Animation
+mainFrame:TweenSize(
+    UDim2.new(0, 320, 0, 200),
+    Enum.EasingDirection.Out,
+    Enum.EasingStyle.Back,
+    0.6,
+    true
+)
+
+-- Pulsing Status Dot Animation
+spawn(function()
+    while wait(1) do
+        statusDot:TweenSize(UDim2.new(0, 12, 0, 12), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true)
+        wait(0.5)
+        statusDot:TweenSize(UDim2.new(0, 8, 0, 8), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.5, true)
+    end
+end)
+
+-- Gradient Animation cho Header
+spawn(function()
+    while wait() do
+        for i = 0, 360, 2 do
+            headerGradient.Rotation = i
+            wait(0.03)
+        end
+    end
+end)
+
+-- Runtime Timer Update
+spawn(function()
+    while wait(1) do
+        local elapsed = os.clock() - scriptStartTime
+        local hours = math.floor(elapsed / 3600)
+        local minutes = math.floor((elapsed % 3600) / 60)
+        local seconds = math.floor(elapsed % 60)
+        runtimeValue.Text = string.format("%02d:%02d:%02d", hours, minutes, seconds)
+    end
+end)
 
 -- Biến trạng thái
 local flyEnabled = false
@@ -172,7 +418,10 @@ local function setupCar()
             bodyVelocity.Parent = primaryPart
         end
 
-        primaryPart:SetNetworkOwner(player)
+        -- Try to set network owner (sẽ fail nếu chạy từ client, nhưng không sao)
+        pcall(function()
+            primaryPart:SetNetworkOwner(player)
+        end)
         return true
     end
 
@@ -181,7 +430,9 @@ end
 
 -- Hàm bật fly
 local function enableFly()
-    if not carModel then
+    -- Nếu đã đang bay (có carModel và primaryPart), không cần setup lại
+    -- Chỉ setup khi chưa có xe hoặc xe bị mất
+    if not carModel or not primaryPart then
         if not setupCar() then
             warn("Không tìm thấy xe! Hãy ngồi vào ghế lái trước khi bật.")
             return
@@ -189,29 +440,66 @@ local function enableFly()
     end
 
     flyEnabled = true
-    toggleButton.Text = "TẮT FLY"
-    toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+    
+    -- UI Updates với Animation
+    buttonText.Text = "DEACTIVATE FLY"
+    buttonIcon.Text = "⏸"
+    
+    toggleGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(34, 197, 94)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(22, 163, 74))
+    }
+    
+    -- Status dot color change
+    statusDot.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
 
     heartbeatConnection = RunService.Heartbeat:Connect(function()
     	if primaryPart and flyEnabled then
+            -- Xử lý tăng giảm tốc độ (AUTO W MODE)
+            local isS = game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S)
+            
+            local targetSpeed = MAX_SPEED -- Mặc định lao về phía trước (Auto W)
+            
+            if isS then
+                targetSpeed = -MAX_SPEED / 2 -- Phanh / Lùi
+            end
+            
+            -- Giả lập Throttle để game nhận diện xe đang chạy
+            if vehicleSeat then
+                if isS then
+                    vehicleSeat.Throttle = -1
+                    vehicleSeat.ThrottleFloat = -1
+                else
+                    vehicleSeat.Throttle = 1
+                    vehicleSeat.ThrottleFloat = 1
+                end
+            end
+
+            -- Hiệu ứng quán tính (Smooth acceleration)
+            local accel = 20
+            if currentSpeed < targetSpeed then
+                currentSpeed = math.min(currentSpeed + accel, targetSpeed)
+            elseif currentSpeed > targetSpeed then
+                currentSpeed = math.max(currentSpeed - accel, targetSpeed)
+            end
+
         	local forwardVector = primaryPart.CFrame.LookVector
-        	bodyVelocity.Velocity = forwardVector * MAX_SPEED
+        	bodyVelocity.Velocity = forwardVector * currentSpeed
+            
+            -- Update Speed Display
+            speedValue.Text = math.floor(math.abs(currentSpeed))
 
         	if os.clock() - startTime >= RETURN_TIME then
-            
-           	 -- RECHECK SAFETY
             	if carModel and carModel.PrimaryPart then
                 	carModel:SetPrimaryPartCFrame(RETURN_CFRAME)
                		warn("⭐ Đã auto quay về vị trí bắt đầu!")
            	 	else
                 	warn("❌ Không thể teleport vì PrimaryPart NULL — đợi 1 nhịp rồi thử lại…")
             	end
-
             	startTime = os.clock()
         	end
     	end
 	end)
-
 
     warn("Fly car đã BẬT!")
 end
@@ -226,14 +514,48 @@ local function disableFly()
     if bodyVelocity then
         bodyVelocity.Velocity = Vector3.new(0, 0, 0)
     end
-    toggleButton.Text = "BẬT FLY"
-    toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+    
+    -- Reset tất cả biến state để lần sau bật lại sẽ setup từ đầu
+    carModel = nil
+    primaryPart = nil
+    vehicleSeat = nil
+    
+    -- UI Updates với Animation
+    buttonText.Text = "ACTIVATE FLY"
+    buttonIcon.Text = "▶"
+    
+    toggleGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 53, 69)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(185, 28, 28))
+    }
+    
+    -- Status dot color change
+    statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 127)
+    
+    -- Reset speed display
+    currentSpeed = 0
+    speedValue.Text = "0"
 
     warn("Fly car đã TẮT!")
 end
 
--- Sự kiện toggle
+-- Sự kiện toggle với Hover Effect
+toggleButton.MouseEnter:Connect(function()
+    if not flyEnabled then
+        toggleButton:TweenSize(UDim2.new(1, 5, 0, 52), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+    end
+end)
+
+toggleButton.MouseLeave:Connect(function()
+    toggleButton:TweenSize(UDim2.new(1, 0, 0, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+end)
+
 toggleButton.MouseButton1Click:Connect(function()
+    -- Click Animation
+    toggleButton:TweenSize(UDim2.new(1, -5, 0, 48), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+    wait(0.1)
+    toggleButton:TweenSize(UDim2.new(1, 0, 0, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+    
     if flyEnabled then
         disableFly()
     else
@@ -241,4 +563,4 @@ toggleButton.MouseButton1Click:Connect(function()
     end
 end)
 
-warn("GUI Fly Car đã load! Click nút để bật/tắt.")
+warn("✨ GUI Fly Car đã load với UI hiện đại! Click nút để bật/tắt.")
