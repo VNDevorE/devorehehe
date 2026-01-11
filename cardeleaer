@@ -81,49 +81,101 @@ local RETURN_CFRAME = CFrame.new(
 )
 
 -- Hàm setup xe
+-- Hàm setup xe (V2: Auto Detect Cải tiến)
 local function setupCar()
-    for i, v in pairs(workspace.Cars:GetDescendants()) do
-        if v.Name == "Hennessey6" and v:IsA("Model") and v.PrimaryPart then
-            carModel = v
-            primaryPart = carModel.PrimaryPart
+    local targetCar = nil
+    
+    local character = player.Character
+    if not character then return false end
 
-            v:SetPrimaryPartCFrame(RETURN_CFRAME)
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return false end
 
-            local att = primaryPart:FindFirstChild("PhysicsAttachment") or Instance.new("Attachment", primaryPart)
-            att.Name = "PhysicsAttachment"
-
-            antiGravForce = primaryPart:FindFirstChild("AntiGravityForce")
-            if not antiGravForce then
-                antiGravForce = Instance.new("VectorForce")
-                antiGravForce.Name = "AntiGravityForce"
-                antiGravForce.Attachment0 = att
-                antiGravForce.Parent = primaryPart
-            end
-            local totalMass = primaryPart:GetMass()
-            antiGravForce.Force = Vector3.new(0, totalMass * Gravity, 0)
-
-            angularVel = primaryPart:FindFirstChild("ZeroAngularVelocity")
-            if not angularVel then
-                angularVel = Instance.new("BodyAngularVelocity")
-                angularVel.Name = "ZeroAngularVelocity"
-                angularVel.maxTorque = MAX_FORCE_VECTOR
-                angularVel.P = 20000
-                angularVel.Parent = primaryPart
-            end
-            angularVel.AngularVelocity = Vector3.new(0, 0, 0)
-
-            bodyVelocity = primaryPart:FindFirstChild("ConstantBodyVelocity")
-            if not bodyVelocity then
-                bodyVelocity = Instance.new("BodyVelocity")
-                bodyVelocity.Name = "ConstantBodyVelocity"
-                bodyVelocity.maxForce = MAX_FORCE_VECTOR
-                bodyVelocity.Parent = primaryPart
-            end
-
-            primaryPart:SetNetworkOwner(player)
-            return true
+    -- LOGIC TÌM XE
+    -- 1. Ưu tiên kiểm tra Humanoid.SeatPart
+    if humanoid.SeatPart then
+        warn("Debug: Found SeatPart detected: " .. humanoid.SeatPart.Name)
+        local current = humanoid.SeatPart
+        -- Leo ngược lên parent để tìm Model xe chính
+        while current and current ~= workspace and current.Parent ~= game do
+             current = current.Parent
+             if current:IsA("Model") and current.PrimaryPart then
+                 targetCar = current
+                 -- Nếu Model này nằm trong workspace.Cars thì quá chuẩn, chốt luôn
+                 if current.Parent and current.Parent.Name == "Cars" then
+                     break
+                 end
+             end
         end
     end
+
+    -- 2. Fallback: Nếu SeatPart nil (do lag?), quét workspace.Cars tìm ghế mình đang ngồi
+    if not targetCar and workspace:FindFirstChild("Cars") then
+        warn("Debug: SeatPart nil, scanning workspace.Cars variants...")
+        for _, desc in pairs(workspace.Cars:GetDescendants()) do
+            if (desc:IsA("VehicleSeat") or desc:IsA("Seat")) and desc.Occupant == humanoid then
+                 warn("Debug: Found occupied seat via scan: " .. desc.Name)
+                 -- Leo ngược lên tìm Model
+                 local current = desc
+                 while current and current ~= workspace and current.Parent ~= game do
+                     current = current.Parent
+                     if current:IsA("Model") and current.PrimaryPart then
+                         targetCar = current
+                         if current.Parent and current.Parent.Name == "Cars" then
+                             break
+                         end
+                     end
+                 end
+                 if targetCar then break end
+            end
+        end
+    end
+
+    -- KẾT QUẢ
+    if targetCar then
+        warn("✅ Script đã nhận diện xe: " .. targetCar.Name)
+        local v = targetCar
+        carModel = v
+        primaryPart = carModel.PrimaryPart
+
+        -- Teleport
+        v:SetPrimaryPartCFrame(RETURN_CFRAME)
+
+        local att = primaryPart:FindFirstChild("PhysicsAttachment") or Instance.new("Attachment", primaryPart)
+        att.Name = "PhysicsAttachment"
+
+        antiGravForce = primaryPart:FindFirstChild("AntiGravityForce")
+        if not antiGravForce then
+            antiGravForce = Instance.new("VectorForce")
+            antiGravForce.Name = "AntiGravityForce"
+            antiGravForce.Attachment0 = att
+            antiGravForce.Parent = primaryPart
+        end
+        local totalMass = primaryPart:GetMass()
+        antiGravForce.Force = Vector3.new(0, totalMass * Gravity, 0)
+
+        angularVel = primaryPart:FindFirstChild("ZeroAngularVelocity")
+        if not angularVel then
+            angularVel = Instance.new("BodyAngularVelocity")
+            angularVel.Name = "ZeroAngularVelocity"
+            angularVel.maxTorque = MAX_FORCE_VECTOR
+            angularVel.P = 20000
+            angularVel.Parent = primaryPart
+        end
+        angularVel.AngularVelocity = Vector3.new(0, 0, 0)
+
+        bodyVelocity = primaryPart:FindFirstChild("ConstantBodyVelocity")
+        if not bodyVelocity then
+            bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.Name = "ConstantBodyVelocity"
+            bodyVelocity.maxForce = MAX_FORCE_VECTOR
+            bodyVelocity.Parent = primaryPart
+        end
+
+        primaryPart:SetNetworkOwner(player)
+        return true
+    end
+
     return false
 end
 
@@ -131,7 +183,7 @@ end
 local function enableFly()
     if not carModel then
         if not setupCar() then
-            warn("Không tìm thấy xe Hennessey3!")
+            warn("Không tìm thấy xe! Hãy ngồi vào ghế lái trước khi bật.")
             return
         end
     end
