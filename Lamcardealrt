@@ -9,7 +9,7 @@ end)
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Gravity = workspace.Gravity -- 196.2
-local MAX_SPEED = 485 
+local MAX_SPEED = 460 
 local MAX_FORCE_VECTOR = Vector3.new(math.huge, math.huge, math.huge)
 
 local player = Players.LocalPlayer
