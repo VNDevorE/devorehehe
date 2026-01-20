@@ -1,32 +1,32 @@
 -- ═══════════════════════════════════════════════════════════
--- 🛡️ ANTI AFK SYSTEM
+-- 🛡️ ANTI AFK SYSTEM [cite: 1]
 -- ═══════════════════════════════════════════════════════════
 warn("Anti AFK đang chạy...")
 pcall(function()
     game:GetService("Players").LocalPlayer.Idled:Connect(function()
-        game:GetService("VirtualUser"):CaptureController()
-        game:GetService("VirtualUser"):ClickButton2(Vector2.new())
+        local VirtualUser = game:GetService("VirtualUser")
+        VirtualUser:CaptureController()
+        VirtualUser:ClickButton2(Vector2.new())
     end)
 end)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- BIẾN TOÀN CỤC
+-- BIẾN KẾT NỐI TOÀN CỤC
 _G.ActivateFlyFunction = nil 
 
 -- ═══════════════════════════════════════════════════════════
--- 🤖 HỆ THỐNG TỰ ĐỘNG (FULL QUY TRÌNH 6 BƯỚC)
+-- 🤖 HỆ THỐNG TỰ ĐỘNG (FULL QUY TRÌNH)
 -- ═══════════════════════════════════════════════════════════
 task.spawn(function()
-    local targetDealership = "HyperDealership" -- Đã đổi sang đại lý Hyper
-    local targetCarName = "Hanessy Poison Rebel Speedster"  --
+    local targetDealership = "Dealership1" 
+    local targetCarName = "Hanessy Poison Rebel Speedster" -- Tên xe mới của bạn
     
-    warn("⏳ Bước 1: Đợi game load UI...")
+    warn("⏳ Bước 1: Đợi 10 giây load UI...")
     task.wait(10)
 
     -- BƯỚC 1: CHỌN ĐẠI LÝ
@@ -64,9 +64,8 @@ task.spawn(function()
         task.wait(0.5)
     end
 
-    -- BƯỚC 3: MỞ KHO XE (INVENTORY)
-    task.wait(13) -- Đợi đại lý xây xong
-    warn("🚀 Bước 3: Tìm nút Inventory...")
+    -- BƯỚC 3: MỞ KHO XE (XE XANH)
+    task.wait(13)
     local foundInventory = false
     while not foundInventory do
         local menu = playerGui:FindFirstChild("Menu")
@@ -84,48 +83,36 @@ task.spawn(function()
         task.wait(1)
     end
 
-    -- BƯỚC 4: CHỌN XE VÀ DRIVE (SPAWN)
+    -- BƯỚC 4: CHỌN XE & DRIVE (SPAWN)
     task.wait(2)
-    warn("🎯 Bước 4: Tìm xe và nhấn DRIVE...")
     local carSelected, driveClicked = false, false
-
     while not driveClicked do
         for _, v in pairs(playerGui:GetDescendants()) do
-            -- 4.1: Chọn tên xe
             if not carSelected and v:IsA("TextLabel") and v.Text == targetCarName then
                 local carBtn = v:IsA("GuiButton") and v or v.Parent
                 if carBtn and carBtn.Visible then
                     warn("✅ Đã chọn xe: " .. targetCarName)
                     if firesignal then firesignal(carBtn.Activated) end
-                    carSelected = true
-                    task.wait(2) -- Đợi bảng DRIVE hiện ra
+                    carSelected = true; task.wait(2)
                 end
             end
-
-            -- 4.2: Nhấn nút DRIVE (Spawn trong frame '2')
-            if carSelected then
-                if v.Name == "Spawn" and v:IsA("ImageButton") and v.Parent.Name == "2" then
-                    if v.Visible and v.AbsoluteSize.X > 0 then
-                        warn("🚀 Đã tìm thấy nút Spawn chính xác! Đang kích hoạt...")
-                        if firesignal then
-                            firesignal(v.Activated)
-                            firesignal(v.MouseButton1Click)
-                            firesignal(v.MouseButton1Down) -- ÉP TÍN HIỆU XUỐNG
-                        end
-                        pcall(function()
-                            for _, con in pairs(getconnections(v.Activated)) do con:Fire() end
-                            for _, con in pairs(getconnections(v.MouseButton1Click)) do con:Fire() end
-                        end)
-                        driveClicked = true; break
+            if carSelected and v.Name == "Spawn" and v.Parent.Name == "2" then
+                if v.Visible and v.AbsoluteSize.X > 0 then
+                    warn("🚀 Nhấn DRIVE! Xe đang spawn...")
+                    if firesignal then
+                        firesignal(v.Activated)
+                        firesignal(v.MouseButton1Click)
+                        firesignal(v.MouseButton1Down)
                     end
+                    driveClicked = true; break
                 end
             end
         end
         task.wait(1)
     end
 
-    -- 🌟 BƯỚC 5: TỰ ĐỘNG BẬT FLY
-    warn("⏳ Bước 5: Đợi hàm Fly load hoàn tất...")
+    -- 🌟 BƯỚC 5: TỰ ĐỘNG BẬT FLY (ĐÃ FIX LIÊN KẾT)
+    warn("⏳ Đợi xe ổn định và hàm Fly load...")
     local timeout = 0
     while not _G.ActivateFlyFunction and timeout < 30 do
         task.wait(1)
@@ -135,10 +122,11 @@ task.spawn(function()
         warn("✨ Đang tự động kích hoạt FLY...")
         pcall(function() _G.ActivateFlyFunction() end)
     end
+    warn("⭐ HOÀN TẤT QUY TRÌNH 100%!")
 end)
 
 -- ═══════════════════════════════════════════════════════════
--- 🎨 MODERN UI DESIGN WITH ANIMATIONS
+-- 🎨 MODERN UI DESIGN WITH ANIMATIONS [cite: 2, 3, 7]
 -- ═══════════════════════════════════════════════════════════
 local scriptStartTime = os.clock()
 local screenGui = Instance.new("ScreenGui")
@@ -148,10 +136,9 @@ screenGui.Parent = playerGui
 
 local mainFrame = Instance.new("Frame")
 mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 0, 0, 0)
+mainFrame.Size = UDim2.new(0, 320, 0, 200) -- [cite: 2]
 mainFrame.Position = UDim2.new(0, 20, 0, 20)
 mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-mainFrame.BorderSizePixel = 0
 mainFrame.Active = true
 mainFrame.Draggable = true
 mainFrame.ClipsDescendants = true
@@ -161,33 +148,20 @@ local mainCorner = Instance.new("UICorner")
 mainCorner.CornerRadius = UDim.new(0, 16)
 mainCorner.Parent = mainFrame
 
-local gradient = Instance.new("UIGradient")
-gradient.Color = ColorSequence.new{
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 50)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 25))
-}
-gradient.Rotation = 45
-gradient.Parent = mainFrame
-
 local headerBar = Instance.new("Frame")
+headerBar.Name = "HeaderBar" -- [cite: 3]
 headerBar.Size = UDim2.new(1, 0, 0, 50)
 headerBar.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-headerBar.BorderSizePixel = 0
 headerBar.Parent = mainFrame
-
-local headerCorner = Instance.new("UICorner")
-headerCorner.CornerRadius = UDim.new(0, 16)
-headerCorner.Parent = headerBar
 
 local titleLabel = Instance.new("TextLabel")
 titleLabel.Size = UDim2.new(1, -60, 1, 0)
 titleLabel.Position = UDim2.new(0, 15, 0, 0)
 titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "🚗 VEHICLE FLY SYSTEM"
-titleLabel.TextColor3 = Color3.new(1,1,1)
+titleLabel.Text = "🚗 VEHICLE FLY"
+titleLabel.TextColor3 = Color3.new(1, 1, 1)
 titleLabel.TextSize = 16
 titleLabel.Font = Enum.Font.GothamBold
-titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.Parent = headerBar
 
 local speedValue = Instance.new("TextLabel")
@@ -195,7 +169,7 @@ speedValue.Size = UDim2.new(0.5, 0, 0, 30)
 speedValue.Position = UDim2.new(0, 15, 0, 65)
 speedValue.BackgroundTransparency = 1
 speedValue.Text = "SPD: 0"
-speedValue.TextColor3 = Color3.new(1,1,1)
+speedValue.TextColor3 = Color3.new(1, 1, 1)
 speedValue.Font = Enum.Font.GothamBold
 speedValue.Parent = mainFrame
 
@@ -208,12 +182,12 @@ runtimeValue.TextColor3 = Color3.new(0, 1, 0.5)
 runtimeValue.Font = Enum.Font.GothamBold
 runtimeValue.Parent = mainFrame
 
-local toggleButton = Instance.new("TextButton")
+local toggleButton = Instance.new("TextButton") -- [cite: 7]
 toggleButton.Size = UDim2.new(1, -30, 0, 50)
 toggleButton.Position = UDim2.new(0, 15, 0, 120)
 toggleButton.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
 toggleButton.Text = "ACTIVATE FLY"
-toggleButton.TextColor3 = Color3.new(1,1,1)
+toggleButton.TextColor3 = Color3.new(1, 1, 1)
 toggleButton.Font = Enum.Font.GothamBold
 toggleButton.Parent = mainFrame
 
@@ -221,14 +195,21 @@ local toggleCorner = Instance.new("UICorner")
 toggleCorner.Parent = toggleButton
 
 -- ═══════════════════════════════════════════════════════════
--- ✈️ FLY LOGIC (ĐÃ FIX LỖI XOAY & LEVELING)
+-- ✈️ FLY LOGIC (ĐÃ FIX XOAY VÒNG & AUTO RETURN) [cite: 11, 26, 31]
 -- ═══════════════════════════════════════════════════════════
 local flyEnabled = false
 local currentSpeed = 0
-local MAX_SPEED = 510
+local MAX_SPEED = 510 -- [cite: 26]
 local carModel, primaryPart, heartbeatConnection, bodyVelocity, angularVel
 local Gravity = workspace.Gravity
-local RETURN_CFRAME = CFrame.new(-0.001, 20013.5, -13.8)
+local startTime = os.clock() -- [cite: 11]
+local RETURN_TIME = 60 * 30 -- 30 phút tự động về chỗ cũ [cite: 11]
+local RETURN_CFRAME = CFrame.new( -- [cite: 11]
+    -0.00124485791, 20013.5488, -13.8987846,
+    0.999999821, -0.000596006052, -3.58467355e-06,
+    0.000596015481, 0.999992192, 0.00390104786,
+    1.25959752e-06, -0.00390104926, 0.999992371
+)
 
 local function setupCar()
     local character = player.Character
@@ -239,24 +220,21 @@ local function setupCar()
     while v and not (v:IsA("Model") and v.PrimaryPart) do v = v.Parent end
     
     if v then
-        carModel, primaryPart = v, v.PrimaryPart
-        v:SetPrimaryPartCFrame(RETURN_CFRAME)
+        carModel, primaryPart = v, v.PrimaryPart -- [cite: 13]
+        v:SetPrimaryPartCFrame(RETURN_CFRAME) -- [cite: 19]
 
         angularVel = primaryPart:FindFirstChild("ZeroAngularVelocity") or Instance.new("BodyAngularVelocity")
-        angularVel.Name = "ZeroAngularVelocity"
         angularVel.maxTorque = Vector3.new(math.huge, math.huge, math.huge) 
-        angularVel.AngularVelocity = Vector3.new(0, 0, 0)
+        angularVel.AngularVelocity = Vector3.new(0, 0, 0) -- [cite: 21]
         angularVel.Parent = primaryPart
 
         bodyVelocity = primaryPart:FindFirstChild("ConstantBodyVelocity") or Instance.new("BodyVelocity")
-        bodyVelocity.Name = "ConstantBodyVelocity"
-        bodyVelocity.maxForce = Vector3.new(math.huge, math.huge, math.huge)
+        bodyVelocity.maxForce = Vector3.new(math.huge, math.huge, math.huge) -- [cite: 22]
         bodyVelocity.Parent = primaryPart
         
         local mass = 0
         for _, p in pairs(v:GetDescendants()) do if p:IsA("BasePart") then mass = mass + p:GetMass() end end
         local force = primaryPart:FindFirstChild("AntiGrav") or Instance.new("BodyForce", primaryPart)
-        force.Name = "AntiGrav"
         force.Force = Vector3.new(0, mass * Gravity, 0)
         return true
     end
@@ -271,17 +249,23 @@ local function enableFly()
 
     heartbeatConnection = RunService.Heartbeat:Connect(function()
         if primaryPart and flyEnabled then
-            -- 🛠️ FIX XOAY VÒNG: Ép xe luôn nằm ngang (Leveling)
+            -- ÉP XE BAY THẲNG & PHẲNG (FIX XOAY VÒNG)
             local pos = primaryPart.Position
             local look = primaryPart.CFrame.LookVector
             local flatLook = Vector3.new(look.X, 0, look.Z).Unit 
             primaryPart.CFrame = CFrame.new(pos, pos + flatLook)
             
-            bodyVelocity.Velocity = flatLook * MAX_SPEED
+            bodyVelocity.Velocity = flatLook * MAX_SPEED -- 
             speedValue.Text = "SPD: " .. math.floor(MAX_SPEED)
+
+            -- 30 PHÚT TỰ ĐỘNG QUAY VỀ [cite: 31]
+            if os.clock() - startTime >= RETURN_TIME then
+                primaryPart.CFrame = RETURN_CFRAME
+                startTime = os.clock()
+                warn("⭐ Đã auto quay về vị trí farm!")
+            end
         end
     end)
-    warn("Fly car đã BẬT!")
 end
 
 local function disableFly()
@@ -292,14 +276,14 @@ local function disableFly()
     toggleButton.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
 end
 
--- 🌟 LIÊN KẾT GLOBAL Ở CUỐI ĐỂ TRÁNH NIL
+-- 🌟 LIÊN KẾT GLOBAL Ở CUỐI FILE [cite: 24]
 _G.ActivateFlyFunction = enableFly
 
 toggleButton.MouseButton1Click:Connect(function()
     if flyEnabled then disableFly() else enableFly() end
 end)
 
--- Runtime Timer Task
+-- Runtime Timer Task [cite: 10]
 task.spawn(function()
     while task.wait(1) do
         local elapsed = os.clock() - scriptStartTime
@@ -308,4 +292,4 @@ task.spawn(function()
 end)
 
 mainFrame:TweenSize(UDim2.new(0, 320, 0, 200), "Out", "Back", 0.6, true)
-warn("✨ SCRIPT FULL AUTO LOADED - 100% COMPLETE!")
+warn("✨ SCRIPT LOADED - 30 MIN AUTO RETURN ENABLED!")
