@@ -1,33 +1,594 @@
 -- ═══════════════════════════════════════════════════════════
--- 🛡️ ANTI AFK SYSTEM [cite: 1]
+-- 🛡️ ANTI AFK SYSTEM
 -- ═══════════════════════════════════════════════════════════
 warn("Anti AFK đang chạy...")
 pcall(function()
     game:GetService("Players").LocalPlayer.Idled:Connect(function()
-        local VirtualUser = game:GetService("VirtualUser")
-        VirtualUser:CaptureController()
-        VirtualUser:ClickButton2(Vector2.new())
+        game:GetService("VirtualUser"):CaptureController()
+        game:GetService("VirtualUser"):ClickButton2(Vector2.new())
     end)
 end)
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
--- BIẾN KẾT NỐI TOÀN CỤC
-_G.ActivateFlyFunction = nil 
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Gravity = workspace.Gravity -- 196.2
+local MAX_SPEED = 510 
+local MAX_FORCE_VECTOR = Vector3.new(math.huge, math.huge, math.huge)
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
 
 -- ═══════════════════════════════════════════════════════════
--- 🤖 HỆ THỐNG TỰ ĐỘNG (FULL QUY TRÌNH)
+-- 🎨 MODERN UI DESIGN WITH ANIMATIONS
+-- ═══════════════════════════════════════════════════════════
+
+local scriptStartTime = os.clock()
+
+-- Tạo GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FlyCarGUI"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = playerGui
+
+-- Main Container với Gradient Background
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 0, 0, 0) -- Start từ 0 để animate
+mainFrame.Position = UDim2.new(0, 20, 0, 20)
+mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
+mainFrame.BorderSizePixel = 0
+mainFrame.Active = true
+mainFrame.Draggable = true
+mainFrame.ClipsDescendants = true
+mainFrame.Parent = screenGui
+
+local mainCorner = Instance.new("UICorner")
+mainCorner.CornerRadius = UDim.new(0, 16)
+mainCorner.Parent = mainFrame
+
+-- Gradient Overlay
+local gradient = Instance.new("UIGradient")
+gradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(30, 30, 50)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(15, 15, 25))
+}
+gradient.Rotation = 45
+gradient.Parent = mainFrame
+
+-- Glow Effect (Shadow)
+local shadow = Instance.new("ImageLabel")
+shadow.Name = "Shadow"
+shadow.BackgroundTransparency = 1
+shadow.Position = UDim2.new(0, -15, 0, -15)
+shadow.Size = UDim2.new(1, 30, 1, 30)
+shadow.ZIndex = 0
+shadow.Image = "rbxasset://textures/ui/GuiImagePlaceholder.png"
+shadow.ImageColor3 = Color3.fromRGB(0, 0, 0)
+shadow.ImageTransparency = 0.7
+shadow.ScaleType = Enum.ScaleType.Slice
+shadow.SliceCenter = Rect.new(10, 10, 118, 118)
+shadow.Parent = mainFrame
+
+-- Header Bar với Accent Color
+local headerBar = Instance.new("Frame")
+headerBar.Name = "HeaderBar"
+headerBar.Size = UDim2.new(1, 0, 0, 50)
+headerBar.BackgroundColor3 = Color3.fromRGB(138, 43, 226) -- Purple accent
+headerBar.BorderSizePixel = 0
+headerBar.Parent = mainFrame
+
+local headerCorner = Instance.new("UICorner")
+headerCorner.CornerRadius = UDim.new(0, 16)
+headerCorner.Parent = headerBar
+
+-- Header Bottom Mask (để chỉ bo góc trên)
+local headerMask = Instance.new("Frame")
+headerMask.Size = UDim2.new(1, 0, 0, 20)
+headerMask.Position = UDim2.new(0, 0, 1, -20)
+headerMask.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
+headerMask.BorderSizePixel = 0
+headerMask.Parent = headerBar
+
+-- Animated Gradient cho Header
+local headerGradient = Instance.new("UIGradient")
+headerGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(138, 43, 226)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(102, 51, 238)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(138, 43, 226))
+}
+headerGradient.Parent = headerBar
+
+-- Title Icon
+local titleIcon = Instance.new("TextLabel")
+titleIcon.Name = "TitleIcon"
+titleIcon.Size = UDim2.new(0, 40, 0, 40)
+titleIcon.Position = UDim2.new(0, 10, 0, 5)
+titleIcon.BackgroundTransparency = 1
+titleIcon.Text = "🚗"
+titleIcon.TextSize = 28
+titleIcon.Font = Enum.Font.GothamBold
+titleIcon.Parent = headerBar
+
+-- Title Label
+local titleLabel = Instance.new("TextLabel")
+titleLabel.Name = "Title"
+titleLabel.Size = UDim2.new(1, -120, 0, 25)
+titleLabel.Position = UDim2.new(0, 55, 0, 5)
+titleLabel.BackgroundTransparency = 1
+titleLabel.Text = "VEHICLE FLY"
+titleLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+titleLabel.TextSize = 18
+titleLabel.Font = Enum.Font.GothamBold
+titleLabel.TextXAlignment = Enum.TextXAlignment.Left
+titleLabel.Parent = headerBar
+
+-- Subtitle
+local subtitle = Instance.new("TextLabel")
+subtitle.Name = "Subtitle"
+subtitle.Size = UDim2.new(1, -120, 0, 15)
+subtitle.Position = UDim2.new(0, 55, 0, 28)
+subtitle.BackgroundTransparency = 1
+subtitle.Text = "Advanced Flight System"
+subtitle.TextColor3 = Color3.fromRGB(200, 200, 220)
+subtitle.TextSize = 10
+subtitle.Font = Enum.Font.Gotham
+subtitle.TextXAlignment = Enum.TextXAlignment.Left
+subtitle.TextTransparency = 0.3
+subtitle.Parent = headerBar
+
+-- Status Indicator (Animated Dot)
+local statusDot = Instance.new("Frame")
+statusDot.Name = "StatusDot"
+statusDot.Size = UDim2.new(0, 8, 0, 8)
+statusDot.Position = UDim2.new(1, -18, 0, 21)
+statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 127)
+statusDot.BorderSizePixel = 0
+statusDot.Parent = headerBar
+
+local dotCorner = Instance.new("UICorner")
+dotCorner.CornerRadius = UDim.new(1, 0)
+dotCorner.Parent = statusDot
+
+-- Content Container
+local contentFrame = Instance.new("Frame")
+contentFrame.Name = "ContentFrame"
+contentFrame.Size = UDim2.new(1, -30, 1, -70)
+contentFrame.Position = UDim2.new(0, 15, 0, 60)
+contentFrame.BackgroundTransparency = 1
+contentFrame.Parent = mainFrame
+
+-- Info Panel
+local infoPanel = Instance.new("Frame")
+infoPanel.Name = "InfoPanel"
+infoPanel.Size = UDim2.new(1, 0, 0, 60)
+infoPanel.BackgroundColor3 = Color3.fromRGB(25, 25, 40)
+infoPanel.BorderSizePixel = 0
+infoPanel.Parent = contentFrame
+
+local infoPanelCorner = Instance.new("UICorner")
+infoPanelCorner.CornerRadius = UDim.new(0, 10)
+infoPanelCorner.Parent = infoPanel
+
+-- Speed Label
+local speedLabel = Instance.new("TextLabel")
+speedLabel.Name = "SpeedLabel"
+speedLabel.Size = UDim2.new(0.5, -5, 0, 25)
+speedLabel.Position = UDim2.new(0, 10, 0, 5)
+speedLabel.BackgroundTransparency = 1
+speedLabel.Text = "⚡ Speed"
+speedLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
+speedLabel.TextSize = 11
+speedLabel.Font = Enum.Font.Gotham
+speedLabel.TextXAlignment = Enum.TextXAlignment.Left
+speedLabel.Parent = infoPanel
+
+local speedValue = Instance.new("TextLabel")
+speedValue.Name = "SpeedValue"
+speedValue.Size = UDim2.new(0.5, -10, 0, 25)
+speedValue.Position = UDim2.new(0, 10, 0, 25)
+speedValue.BackgroundTransparency = 1
+speedValue.Text = "0"
+speedValue.TextColor3 = Color3.fromRGB(138, 43, 226)
+speedValue.TextSize = 16
+speedValue.Font = Enum.Font.GothamBold
+speedValue.TextXAlignment = Enum.TextXAlignment.Left
+speedValue.Parent = infoPanel
+
+-- Runtime Label
+local runtimeLabel = Instance.new("TextLabel")
+runtimeLabel.Name = "RuntimeLabel"
+runtimeLabel.Size = UDim2.new(0.5, -5, 0, 25)
+runtimeLabel.Position = UDim2.new(0.5, 0, 0, 5)
+runtimeLabel.BackgroundTransparency = 1
+runtimeLabel.Text = "⏱️ Runtime"
+runtimeLabel.TextColor3 = Color3.fromRGB(150, 150, 170)
+runtimeLabel.TextSize = 11
+runtimeLabel.Font = Enum.Font.Gotham
+runtimeLabel.TextXAlignment = Enum.TextXAlignment.Left
+runtimeLabel.Parent = infoPanel
+
+local runtimeValue = Instance.new("TextLabel")
+runtimeValue.Name = "RuntimeValue"
+runtimeValue.Size = UDim2.new(0.5, -10, 0, 25)
+runtimeValue.Position = UDim2.new(0.5, 0, 0, 25)
+runtimeValue.BackgroundTransparency = 1
+runtimeValue.Text = "00:00:00"
+runtimeValue.TextColor3 = Color3.fromRGB(0, 255, 127)
+runtimeValue.TextSize = 16
+runtimeValue.Font = Enum.Font.GothamBold
+runtimeValue.TextXAlignment = Enum.TextXAlignment.Left
+runtimeValue.Parent = infoPanel
+
+-- Toggle Button với Gradient
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(1, 0, 0, 50)
+toggleButton.Position = UDim2.new(0, 0, 0, 70)
+toggleButton.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
+toggleButton.BorderSizePixel = 0
+toggleButton.AutoButtonColor = false
+toggleButton.Text = ""
+toggleButton.Parent = contentFrame
+
+local toggleCorner = Instance.new("UICorner")
+toggleCorner.CornerRadius = UDim.new(0, 12)
+toggleCorner.Parent = toggleButton
+
+local toggleGradient = Instance.new("UIGradient")
+toggleGradient.Color = ColorSequence.new{
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 53, 69)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(185, 28, 28))
+}
+toggleGradient.Rotation = 90
+toggleGradient.Parent = toggleButton
+
+-- Button Icon
+local buttonIcon = Instance.new("TextLabel")
+buttonIcon.Name = "ButtonIcon"
+buttonIcon.Size = UDim2.new(0, 30, 1, 0)
+buttonIcon.Position = UDim2.new(0, 10, 0, 0)
+buttonIcon.BackgroundTransparency = 1
+buttonIcon.Text = "▶"
+buttonIcon.TextColor3 = Color3.fromRGB(255, 255, 255)
+buttonIcon.TextSize = 20
+buttonIcon.Font = Enum.Font.GothamBold
+buttonIcon.Parent = toggleButton
+
+-- Button Text
+local buttonText = Instance.new("TextLabel")
+buttonText.Name = "ButtonText"
+buttonText.Size = UDim2.new(1, -50, 1, 0)
+buttonText.Position = UDim2.new(0, 45, 0, 0)
+buttonText.BackgroundTransparency = 1
+buttonText.Text = "ACTIVATE FLY"
+buttonText.TextColor3 = Color3.fromRGB(255, 255, 255)
+buttonText.TextSize = 16
+buttonText.Font = Enum.Font.GothamBold
+buttonText.TextXAlignment = Enum.TextXAlignment.Left
+buttonText.Parent = toggleButton
+
+-- ═══════════════════════════════════════════════════════════
+-- 🎬 ANIMATIONS
+-- ═══════════════════════════════════════════════════════════
+
+-- Entrance Animation
+mainFrame:TweenSize(
+    UDim2.new(0, 320, 0, 200),
+    Enum.EasingDirection.Out,
+    Enum.EasingStyle.Back,
+    0.6,
+    true
+)
+
+-- Pulsing Status Dot Animation
+spawn(function()
+    while wait(1) do
+        statusDot:TweenSize(UDim2.new(0, 12, 0, 12), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.5, true)
+        wait(0.5)
+        statusDot:TweenSize(UDim2.new(0, 8, 0, 8), Enum.EasingDirection.In, Enum.EasingStyle.Quad, 0.5, true)
+    end
+end)
+
+-- Gradient Animation cho Header
+spawn(function()
+    while wait() do
+        for i = 0, 360, 2 do
+            headerGradient.Rotation = i
+            wait(0.03)
+        end
+    end
+end)
+
+-- Runtime Timer Update
+spawn(function()
+    while wait(1) do
+        local elapsed = os.clock() - scriptStartTime
+        local hours = math.floor(elapsed / 3600)
+        local minutes = math.floor((elapsed % 3600) / 60)
+        local seconds = math.floor(elapsed % 60)
+        runtimeValue.Text = string.format("%02d:%02d:%02d", hours, minutes, seconds)
+    end
+end)
+
+-- Biến trạng thái
+local flyEnabled = false
+local carModel = nil
+local primaryPart = nil
+local heartbeatConnection = nil
+local antiGravForce = nil
+local angularVel = nil
+local bodyVelocity = nil
+local vehicleSeat = nil  -- Khởi tạo biến ghế lái
+local currentSpeed = 0   -- Khởi tạo tốc độ hiện tại
+
+-- TIMER AUTO RETURN
+local startTime = os.clock()
+local RETURN_TIME = 60 * 30 --giay
+local RETURN_CFRAME = CFrame.new(
+    -0.00124485791, 20013.5488, -13.8987846,
+    0.999999821, -0.000596006052, -3.58467355e-06,
+    0.000596015481, 0.999992192, 0.00390104786,
+    1.25959752e-06, -0.00390104926, 0.999992371
+)
+
+-- Hàm setup xe
+-- Hàm setup xe (V2: Auto Detect Cải tiến)
+local function setupCar()
+    local targetCar = nil
+    
+    local character = player.Character
+    if not character then return false end
+
+    local humanoid = character:FindFirstChild("Humanoid")
+    if not humanoid then return false end
+
+    -- LOGIC TÌM XE
+    -- 1. Ưu tiên kiểm tra Humanoid.SeatPart
+    if humanoid.SeatPart then
+        warn("Debug: Found SeatPart detected: " .. humanoid.SeatPart.Name)
+        local current = humanoid.SeatPart
+        -- Leo ngược lên parent để tìm Model xe chính
+        while current and current ~= workspace and current.Parent ~= game do
+             current = current.Parent
+             if current:IsA("Model") and current.PrimaryPart then
+                 targetCar = current
+                 -- Nếu Model này nằm trong workspace.Cars thì quá chuẩn, chốt luôn
+                 if current.Parent and current.Parent.Name == "Cars" then
+                     break
+                 end
+             end
+        end
+    end
+
+    -- 2. Fallback: Nếu SeatPart nil (do lag?), quét workspace.Cars tìm ghế mình đang ngồi
+    if not targetCar and workspace:FindFirstChild("Cars") then
+        warn("Debug: SeatPart nil, scanning workspace.Cars variants...")
+        for _, desc in pairs(workspace.Cars:GetDescendants()) do
+            if (desc:IsA("VehicleSeat") or desc:IsA("Seat")) and desc.Occupant == humanoid then
+                 warn("Debug: Found occupied seat via scan: " .. desc.Name)
+                 vehicleSeat = desc -- Gán ghế xe vào biến toàn cục
+                 -- Leo ngược lên tìm Model
+                 local current = desc
+                 while current and current ~= workspace and current.Parent ~= game do
+                     current = current.Parent
+                     if current:IsA("Model") and current.PrimaryPart then
+                         targetCar = current
+                         if current.Parent and current.Parent.Name == "Cars" then
+                             break
+                         end
+                     end
+                 end
+                 if targetCar then break end
+            end
+        end
+    end
+
+    -- KẾT QUẢ
+    if targetCar then
+        warn("✅ Script đã nhận diện xe: " .. targetCar.Name)
+        local v = targetCar
+        carModel = v
+        primaryPart = carModel.PrimaryPart
+        if not vehicleSeat then
+            vehicleSeat = v:FindFirstChildWhichIsA("VehicleSeat", true)
+        end
+
+        -- Teleport
+        v:SetPrimaryPartCFrame(RETURN_CFRAME)
+
+        local att = primaryPart:FindFirstChild("PhysicsAttachment") or Instance.new("Attachment", primaryPart)
+        att.Name = "PhysicsAttachment"
+
+        antiGravForce = primaryPart:FindFirstChild("AntiGravityForce")
+        if not antiGravForce then
+            antiGravForce = Instance.new("VectorForce")
+            antiGravForce.Name = "AntiGravityForce"
+            antiGravForce.Attachment0 = att
+            antiGravForce.Parent = primaryPart
+        end
+        local totalMass = primaryPart:GetMass()
+        antiGravForce.Force = Vector3.new(0, totalMass * Gravity, 0)
+
+        angularVel = primaryPart:FindFirstChild("ZeroAngularVelocity")
+        if not angularVel then
+            angularVel = Instance.new("BodyAngularVelocity")
+            angularVel.Name = "ZeroAngularVelocity"
+            angularVel.maxTorque = MAX_FORCE_VECTOR
+            angularVel.P = 20000
+            angularVel.Parent = primaryPart
+        end
+        angularVel.AngularVelocity = Vector3.new(0, 0, 0)
+
+        bodyVelocity = primaryPart:FindFirstChild("ConstantBodyVelocity")
+        if not bodyVelocity then
+            bodyVelocity = Instance.new("BodyVelocity")
+            bodyVelocity.Name = "ConstantBodyVelocity"
+            bodyVelocity.maxForce = MAX_FORCE_VECTOR
+            bodyVelocity.Parent = primaryPart
+        end
+
+        -- Try to set network owner (sẽ fail nếu chạy từ client, nhưng không sao)
+        pcall(function()
+            primaryPart:SetNetworkOwner(player)
+        end)
+        return true
+    end
+
+    return false
+end
+
+-- Hàm bật fly
+local function enableFly()
+    -- Nếu đã đang bay (có carModel và primaryPart), không cần setup lại
+    -- Chỉ setup khi chưa có xe hoặc xe bị mất
+    if not carModel or not primaryPart then
+        if not setupCar() then
+            warn("Không tìm thấy xe! Hãy ngồi vào ghế lái trước khi bật.")
+            return
+        end
+    end
+
+    flyEnabled = true
+    
+    -- UI Updates với Animation
+    buttonText.Text = "DEACTIVATE FLY"
+    buttonIcon.Text = "⏸"
+    
+    toggleGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(34, 197, 94)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(22, 163, 74))
+    }
+    
+    -- Status dot color change
+    statusDot.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
+
+    -- Khởi tạo tốc độ ngay khi bật
+    currentSpeed = MAX_SPEED
+
+    heartbeatConnection = RunService.Heartbeat:Connect(function()
+    	if primaryPart and flyEnabled then
+            -- Xử lý tăng giảm tốc độ (AUTO W MODE)
+            local isS = game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S)
+            
+            local targetSpeed = MAX_SPEED -- Mặc định lao về phía trước (Auto W)
+            
+            if isS then
+                targetSpeed = -MAX_SPEED / 2 -- Phanh / Lùi
+            end
+            
+            -- Giả lập Throttle để game nhận diện xe đang chạy
+            if vehicleSeat then
+                if isS then
+                    vehicleSeat.Throttle = -1
+                    vehicleSeat.ThrottleFloat = -1
+                else
+                    vehicleSeat.Throttle = 1
+                    vehicleSeat.ThrottleFloat = 1
+                end
+            end
+
+            -- Gán tốc độ trực tiếp (không có gia tốc từ từ)
+            currentSpeed = targetSpeed
+
+        	local forwardVector = primaryPart.CFrame.LookVector
+        	bodyVelocity.Velocity = forwardVector * currentSpeed
+            
+            -- Update Speed Display
+            speedValue.Text = math.floor(math.abs(currentSpeed))
+
+        	if os.clock() - startTime >= RETURN_TIME then
+            	if carModel and carModel.PrimaryPart then
+                	carModel:SetPrimaryPartCFrame(RETURN_CFRAME)
+               		warn("⭐ Đã auto quay về vị trí bắt đầu!")
+           	 	else
+                	warn("❌ Không thể teleport vì PrimaryPart NULL — đợi 1 nhịp rồi thử lại…")
+            	end
+            	startTime = os.clock()
+        	end
+    	end
+	end)
+
+    warn("Fly car đã BẬT!")
+end
+
+-- Hàm tắt fly
+local function disableFly()
+    flyEnabled = false
+    if heartbeatConnection then
+        heartbeatConnection:Disconnect()
+        heartbeatConnection = nil
+    end
+    if bodyVelocity then
+        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+    end
+    
+    -- Reset tất cả biến state để lần sau bật lại sẽ setup từ đầu
+    carModel = nil
+    primaryPart = nil
+    vehicleSeat = nil
+    
+    -- UI Updates với Animation
+    buttonText.Text = "ACTIVATE FLY"
+    buttonIcon.Text = "▶"
+    
+    toggleGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(220, 53, 69)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(185, 28, 28))
+    }
+    
+    -- Status dot color change
+    statusDot.BackgroundColor3 = Color3.fromRGB(0, 255, 127)
+    
+    -- Reset speed display
+    currentSpeed = 0
+    speedValue.Text = "0"
+
+    warn("Fly car đã TẮT!")
+end
+
+-- Sự kiện toggle với Hover Effect
+toggleButton.MouseEnter:Connect(function()
+    if not flyEnabled then
+        toggleButton:TweenSize(UDim2.new(1, 5, 0, 52), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+    end
+end)
+
+toggleButton.MouseLeave:Connect(function()
+    toggleButton:TweenSize(UDim2.new(1, 0, 0, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.2, true)
+end)
+
+toggleButton.MouseButton1Click:Connect(function()
+    -- Click Animation
+    toggleButton:TweenSize(UDim2.new(1, -5, 0, 48), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+    wait(0.1)
+    toggleButton:TweenSize(UDim2.new(1, 0, 0, 50), Enum.EasingDirection.Out, Enum.EasingStyle.Quad, 0.1, true)
+    
+    if flyEnabled then
+        disableFly()
+    else
+        enableFly()
+    end
+end)
+
+warn("✨ GUI Fly Car đã load với UI hiện đại! Click nút để bật/tắt.")
+
+-- ═══════════════════════════════════════════════════════════
+-- 🤖 HỆ THỐNG TỰ ĐỘNG (ĐÃ CHUYỂN XUỐNG CUỐI ĐỂ KẾT NỐI VỚI FLY)
 -- ═══════════════════════════════════════════════════════════
 task.spawn(function()
-    local targetDealership = "Dealership1" 
-    local targetCarName = "Hanessy Poison Rebel Speedster" -- Tên xe mới của bạn
+    -- CẤU HÌNH
+    local targetDealership = "HyperDealership" 
+    local targetCarName = "Hanessy Poison Rebel Speedster"
     
-    warn("⏳ Bước 1: Đợi 10 giây load UI...")
-    task.wait(10)
+    warn("🚀 [AUTO] Bắt đầu quy trình tự động lấy xe...")
+    task.wait(10) -- Đợi game load
 
     -- BƯỚC 1: CHỌN ĐẠI LÝ
     local foundChoose = false
@@ -39,7 +600,7 @@ task.spawn(function()
         local btn = targetFrame and targetFrame:FindFirstChild("Choose")
 
         if btn and btn.Visible then
-            warn("🚀 Nhấn CHỌN đại lý...")
+            warn("1️⃣ [AUTO] Chọn đại lý: " .. targetDealership)
             if firesignal then firesignal(btn.Activated) end
             pcall(function() require(ReplicatedStorage.Packages.Net):Invoke("Dealership.PurchaseDealership", targetDealership) end)
             foundChoose = true
@@ -49,13 +610,13 @@ task.spawn(function()
 
     -- BƯỚC 2: NHẤN LOAD PLOT
     local foundLoad = false
-    warn("⏳ Bước 2: Đợi nút LOAD...")
+    warn("2️⃣ [AUTO] Đang tìm nút LOAD...")
     while not foundLoad do
         for _, v in pairs(playerGui:GetDescendants()) do
             if (v:IsA("TextButton") or v:IsA("TextLabel")) and v.Text == "LOAD" then
                 local btn = v:IsA("GuiButton") and v or v.Parent
                 if btn and btn:IsA("GuiButton") and btn.Visible and btn.AbsoluteSize.X > 0 then
-                    warn("🚀 Nhấn LOAD plot...")
+                    warn("✅ Đã nhấn LOAD!")
                     if firesignal then firesignal(btn.Activated) end
                     foundLoad = true; break
                 end
@@ -64,8 +625,9 @@ task.spawn(function()
         task.wait(0.5)
     end
 
-    -- BƯỚC 3: MỞ KHO XE (XE XANH)
-    task.wait(13)
+    -- BƯỚC 3: MỞ KHO XE
+    task.wait(13) -- Đợi xây nhà
+    warn("3️⃣ [AUTO] Mở Inventory...")
     local foundInventory = false
     while not foundInventory do
         local menu = playerGui:FindFirstChild("Menu")
@@ -73,7 +635,6 @@ task.spawn(function()
         local invBtn = buttons and buttons:FindFirstChild("Inventory")
         
         if invBtn and invBtn:IsA("ImageButton") and invBtn.Visible then
-            warn("✅ Mở Inventory...")
             if firesignal then 
                 firesignal(invBtn.Activated)
                 firesignal(invBtn.MouseButton1Click)
@@ -83,213 +644,64 @@ task.spawn(function()
         task.wait(1)
     end
 
-    -- BƯỚC 4: CHỌN XE & DRIVE (SPAWN)
+    -- BƯỚC 4: CHỌN XE & DRIVE -> KÍCH HOẠT FLY
     task.wait(2)
+    warn("4️⃣ [AUTO] Chọn xe: " .. targetCarName)
     local carSelected, driveClicked = false, false
+
     while not driveClicked do
         for _, v in pairs(playerGui:GetDescendants()) do
+            -- 4.1: Chọn xe trong list
             if not carSelected and v:IsA("TextLabel") and v.Text == targetCarName then
                 local carBtn = v:IsA("GuiButton") and v or v.Parent
                 if carBtn and carBtn.Visible then
-                    warn("✅ Đã chọn xe: " .. targetCarName)
                     if firesignal then firesignal(carBtn.Activated) end
-                    carSelected = true; task.wait(2)
+                    carSelected = true
+                    task.wait(1.5) 
                 end
             end
-            if carSelected and v.Name == "Spawn" and v.Parent.Name == "2" then
-                if v.Visible and v.AbsoluteSize.X > 0 then
-                    warn("🚀 Nhấn DRIVE! Xe đang spawn...")
-                    if firesignal then
-                        firesignal(v.Activated)
-                        firesignal(v.MouseButton1Click)
-                        firesignal(v.MouseButton1Down)
+
+            -- 4.2: Nhấn DRIVE và KÍCH HOẠT FLY
+            if carSelected then
+                if v.Name == "Spawn" and v:IsA("ImageButton") and v.Parent.Name == "2" then
+                    if v.Visible and v.AbsoluteSize.X > 0 then
+                        warn("🚙 Đã tìm thấy nút DRIVE! Đang click...")
+                        
+                        -- Click nút Drive
+                        if firesignal then
+                            firesignal(v.Activated)
+                            firesignal(v.MouseButton1Click)
+                        end
+                        pcall(function()
+                            for _, con in pairs(getconnections(v.Activated)) do con:Fire() end
+                        end)
+                        
+                        driveClicked = true
+                        
+                        -- PHẦN QUAN TRỌNG NHẤT: AUTO ACTIVE FLY
+                        warn("⏳ Đợi 2 giây để nhân vật ngồi vào ghế...")
+                        task.wait(2.5) -- Đợi server xếp nhân vật vào ghế
+                        
+                        warn("🚀 KÍCH HOẠT ACTIVE FLY TỰ ĐỘNG!")
+                        
+                        -- Thử kích hoạt Fly (lặp lại vài lần để chắc chắn nhận diện được xe)
+                        for i = 1, 5 do
+                            -- Gọi hàm setupCar() để check xem đã ngồi ghế chưa
+                            if setupCar() then
+                                enableFly() -- Gọi hàm bật bay của UI
+                                warn("✅ AUTO SUCCESS: Đã bay lên trời!")
+                                break
+                            else
+                                warn("⚠️ Chưa nhận diện được ghế, thử lại sau 1s...")
+                            end
+                            task.wait(1)
+                        end
+                        
+                        break -- Thoát vòng lặp
                     end
-                    driveClicked = true; break
                 end
             end
         end
         task.wait(1)
     end
-
-    -- 🌟 BƯỚC 5: TỰ ĐỘNG BẬT FLY (ĐÃ FIX LIÊN KẾT)
-    warn("⏳ Đợi xe ổn định và hàm Fly load...")
-    local timeout = 0
-    while not _G.ActivateFlyFunction and timeout < 30 do
-        task.wait(1)
-        timeout = timeout + 1
-    end
-    if _G.ActivateFlyFunction then
-        warn("✨ Đang tự động kích hoạt FLY...")
-        pcall(function() _G.ActivateFlyFunction() end)
-    end
-    warn("⭐ HOÀN TẤT QUY TRÌNH 100%!")
 end)
-
--- ═══════════════════════════════════════════════════════════
--- 🎨 MODERN UI DESIGN WITH ANIMATIONS [cite: 2, 3, 7]
--- ═══════════════════════════════════════════════════════════
-local scriptStartTime = os.clock()
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FlyCarGUI"
-screenGui.ResetOnSpawn = false
-screenGui.Parent = playerGui
-
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 320, 0, 200) -- [cite: 2]
-mainFrame.Position = UDim2.new(0, 20, 0, 20)
-mainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 30)
-mainFrame.Active = true
-mainFrame.Draggable = true
-mainFrame.ClipsDescendants = true
-mainFrame.Parent = screenGui
-
-local mainCorner = Instance.new("UICorner")
-mainCorner.CornerRadius = UDim.new(0, 16)
-mainCorner.Parent = mainFrame
-
-local headerBar = Instance.new("Frame")
-headerBar.Name = "HeaderBar" -- [cite: 3]
-headerBar.Size = UDim2.new(1, 0, 0, 50)
-headerBar.BackgroundColor3 = Color3.fromRGB(138, 43, 226)
-headerBar.Parent = mainFrame
-
-local titleLabel = Instance.new("TextLabel")
-titleLabel.Size = UDim2.new(1, -60, 1, 0)
-titleLabel.Position = UDim2.new(0, 15, 0, 0)
-titleLabel.BackgroundTransparency = 1
-titleLabel.Text = "🚗 VEHICLE FLY"
-titleLabel.TextColor3 = Color3.new(1, 1, 1)
-titleLabel.TextSize = 16
-titleLabel.Font = Enum.Font.GothamBold
-titleLabel.Parent = headerBar
-
-local speedValue = Instance.new("TextLabel")
-speedValue.Size = UDim2.new(0.5, 0, 0, 30)
-speedValue.Position = UDim2.new(0, 15, 0, 65)
-speedValue.BackgroundTransparency = 1
-speedValue.Text = "SPD: 0"
-speedValue.TextColor3 = Color3.new(1, 1, 1)
-speedValue.Font = Enum.Font.GothamBold
-speedValue.Parent = mainFrame
-
-local runtimeValue = Instance.new("TextLabel")
-runtimeValue.Size = UDim2.new(0.5, 0, 0, 30)
-runtimeValue.Position = UDim2.new(0.5, 0, 0, 65)
-runtimeValue.BackgroundTransparency = 1
-runtimeValue.Text = "00:00:00"
-runtimeValue.TextColor3 = Color3.new(0, 1, 0.5)
-runtimeValue.Font = Enum.Font.GothamBold
-runtimeValue.Parent = mainFrame
-
-local toggleButton = Instance.new("TextButton") -- [cite: 7]
-toggleButton.Size = UDim2.new(1, -30, 0, 50)
-toggleButton.Position = UDim2.new(0, 15, 0, 120)
-toggleButton.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
-toggleButton.Text = "ACTIVATE FLY"
-toggleButton.TextColor3 = Color3.new(1, 1, 1)
-toggleButton.Font = Enum.Font.GothamBold
-toggleButton.Parent = mainFrame
-
-local toggleCorner = Instance.new("UICorner")
-toggleCorner.Parent = toggleButton
-
--- ═══════════════════════════════════════════════════════════
--- ✈️ FLY LOGIC (ĐÃ FIX XOAY VÒNG & AUTO RETURN) [cite: 11, 26, 31]
--- ═══════════════════════════════════════════════════════════
-local flyEnabled = false
-local currentSpeed = 0
-local MAX_SPEED = 510 -- [cite: 26]
-local carModel, primaryPart, heartbeatConnection, bodyVelocity, angularVel
-local Gravity = workspace.Gravity
-local startTime = os.clock() -- [cite: 11]
-local RETURN_TIME = 60 * 30 -- 30 phút tự động về chỗ cũ [cite: 11]
-local RETURN_CFRAME = CFrame.new( -- [cite: 11]
-    -0.00124485791, 20013.5488, -13.8987846,
-    0.999999821, -0.000596006052, -3.58467355e-06,
-    0.000596015481, 0.999992192, 0.00390104786,
-    1.25959752e-06, -0.00390104926, 0.999992371
-)
-
-local function setupCar()
-    local character = player.Character
-    local humanoid = character and character:FindFirstChild("Humanoid")
-    if not (humanoid and humanoid.SeatPart) then return false end
-
-    local v = humanoid.SeatPart.Parent
-    while v and not (v:IsA("Model") and v.PrimaryPart) do v = v.Parent end
-    
-    if v then
-        carModel, primaryPart = v, v.PrimaryPart -- [cite: 13]
-        v:SetPrimaryPartCFrame(RETURN_CFRAME) -- [cite: 19]
-
-        angularVel = primaryPart:FindFirstChild("ZeroAngularVelocity") or Instance.new("BodyAngularVelocity")
-        angularVel.maxTorque = Vector3.new(math.huge, math.huge, math.huge) 
-        angularVel.AngularVelocity = Vector3.new(0, 0, 0) -- [cite: 21]
-        angularVel.Parent = primaryPart
-
-        bodyVelocity = primaryPart:FindFirstChild("ConstantBodyVelocity") or Instance.new("BodyVelocity")
-        bodyVelocity.maxForce = Vector3.new(math.huge, math.huge, math.huge) -- [cite: 22]
-        bodyVelocity.Parent = primaryPart
-        
-        local mass = 0
-        for _, p in pairs(v:GetDescendants()) do if p:IsA("BasePart") then mass = mass + p:GetMass() end end
-        local force = primaryPart:FindFirstChild("AntiGrav") or Instance.new("BodyForce", primaryPart)
-        force.Force = Vector3.new(0, mass * Gravity, 0)
-        return true
-    end
-    return false
-end
-
-local function enableFly()
-    if not setupCar() then return warn("❌ Hãy ngồi vào xe!") end
-    flyEnabled = true
-    toggleButton.Text = "DEACTIVATE FLY"
-    toggleButton.BackgroundColor3 = Color3.fromRGB(34, 197, 94)
-
-    heartbeatConnection = RunService.Heartbeat:Connect(function()
-        if primaryPart and flyEnabled then
-            -- ÉP XE BAY THẲNG & PHẲNG (FIX XOAY VÒNG)
-            local pos = primaryPart.Position
-            local look = primaryPart.CFrame.LookVector
-            local flatLook = Vector3.new(look.X, 0, look.Z).Unit 
-            primaryPart.CFrame = CFrame.new(pos, pos + flatLook)
-            
-            bodyVelocity.Velocity = flatLook * MAX_SPEED -- 
-            speedValue.Text = "SPD: " .. math.floor(MAX_SPEED)
-
-            -- 30 PHÚT TỰ ĐỘNG QUAY VỀ [cite: 31]
-            if os.clock() - startTime >= RETURN_TIME then
-                primaryPart.CFrame = RETURN_CFRAME
-                startTime = os.clock()
-                warn("⭐ Đã auto quay về vị trí farm!")
-            end
-        end
-    end)
-end
-
-local function disableFly()
-    flyEnabled = false
-    if heartbeatConnection then heartbeatConnection:Disconnect() end
-    if bodyVelocity then bodyVelocity.Velocity = Vector3.new(0,0,0) end
-    toggleButton.Text = "ACTIVATE FLY"
-    toggleButton.BackgroundColor3 = Color3.fromRGB(220, 53, 69)
-end
-
--- 🌟 LIÊN KẾT GLOBAL Ở CUỐI FILE [cite: 24]
-_G.ActivateFlyFunction = enableFly
-
-toggleButton.MouseButton1Click:Connect(function()
-    if flyEnabled then disableFly() else enableFly() end
-end)
-
--- Runtime Timer Task [cite: 10]
-task.spawn(function()
-    while task.wait(1) do
-        local elapsed = os.clock() - scriptStartTime
-        runtimeValue.Text = string.format("%02d:%02d:%02d", math.floor(elapsed/3600), math.floor((elapsed%3600)/60), math.floor(elapsed%60))
-    end
-end)
-
-mainFrame:TweenSize(UDim2.new(0, 320, 0, 200), "Out", "Back", 0.6, true)
-warn("✨ SCRIPT LOADED - 30 MIN AUTO RETURN ENABLED!")
